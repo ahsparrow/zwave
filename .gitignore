@@ -1,0 +1,7 @@
+*.pyc
+
+.cache
+__pycache__
+build
+dist
+yaixm.egg-info
