@@ -1,2 +1,3 @@
 from .controller import Controller
-from .node import Node
+from .node import Node, MultiChannelNode
+from .endpoint import Endpoint

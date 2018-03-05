@@ -1,14 +1,58 @@
+# Frame structure example -
+#
+# 0   SOF
+# 1   Length
+# 2   RESPONSE/REQUEST
+# 3   API_ZW_SEND_DATA (API function)
+# 4   Destination node id
+# 5   Data length
+# 6   Comannd class
+# 7   Command type
+# 8-  Value
+# N   Checksum
+
+#----------------------------------------------------------------------
+# Frame parameters
+
+# Frame type
 SOF = 0x01
 ACK = 0x06
 NAK = 0x15
 CAN = 0x18
 
+# Request/response frame type
 RESPONSE = 0
 REQUEST = 1
+
+#----------------------------------------------------------------------
+# Utility functions
+
+# Format bytes as hex string
+def msg_str(data):
+    return ":".join(["{:02x}".format(x) for x in data])
+
+# Calculate message checksum
+def checksum(data):
+    checksum = 0xff
+    for b in data:
+        checksum = checksum ^ b
+    return checksum
+
+# Make request message
+def request_msg(func, data):
+    out = [len(data) + 3, REQUEST, func] + data
+    out += [checksum(out)]
+    return bytes(out)
+
+#----------------------------------------------------------------------
+# API functions
 
 API_APP_COMMAND_HANDLER = 0x04
 API_ZW_SEND_DATA = 0x13
 API_ZW_GET_VERSION = 0x15
+
+#----------------------------------------------------------------------
+# Command classes/types
 
 COMMAND_CLASS_BASIC = 0x20
 BASIC_SET = 0x01
