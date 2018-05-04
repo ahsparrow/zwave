@@ -14,15 +14,15 @@ RETRY_TIME = 0.05
 MAX_RETRIES = 20
 
 class Controller:
-    def __init__(self, dev):
-        self.dev = dev
+    def __init__(self):
         self.msg_q = gevent.queue.Queue()
         self.nodes = {}
 
     def register_node(self, node):
         self.nodes[node.id] = node
 
-    def open(self):
+    def open(self, dev):
+        self.dev = dev
         self.ser = serial.Serial(self.dev, timeout=1.0)
 
     def start(self):

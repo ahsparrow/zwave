@@ -6,15 +6,22 @@ from gevent import monkey; monkey.patch_all()
 
 import zwave
 
-controller = zwave.Controller("/dev/ttyACM0")
+controller = zwave.Controller()
 
-node = zwave.MultiChannelNode(4, controller)
-switch1 = zwave.Endpoint(node, id=1)
-switch2 = zwave.Endpoint(node, id=2)
+node = zwave.Node(4, controller)
+#switch = zwave.BinarySwitch(node)
+#switch2 = zwave.BinarySwitch(node, 2)
+switch = zwave.Endpoint(node)
 
-controller.open()
+controller.open("/dev/ttyACM0")
 controller.start()
 
-gevent.spawn_later(1, switch1.get)
-gevent.spawn_later(3, switch2.get)
-gevent.wait()
+#gevent.spawn_later(1, node.get_config, 20)
+gevent.spawn_later(1, switch.get)
+gevent.spawn_later(2, switch.set, 0)
+#gevent.spawn_later(4, switch.set, 0)
+
+try:
+    gevent.wait()
+except KeyboardInterrupt:
+    pass

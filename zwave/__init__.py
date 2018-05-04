@@ -1,3 +1,3 @@
 from .controller import Controller
-from .node import Node, MultiChannelNode
-from .endpoint import Endpoint
+from .node import Node
+from .endpoint import Endpoint, BinarySwitch
