@@ -1,5 +1,7 @@
 import logging
 
+from . import command
+from . import serialize
 from . import zwave
 
 class Node:
@@ -14,7 +16,7 @@ class Node:
         self.endpoints[endpoint.id] = endpoint
 
     def send_command(self, command):
-        cmd_frame = zwave.serialize(command)
+        cmd_frame = serialize.serialize(command)
         msg_data = [self.id, len(cmd_frame)] + cmd_frame
         msg = zwave.request_msg(zwave.API_ZW_SEND_DATA, msg_data)
 
@@ -22,28 +24,39 @@ class Node:
 
     def send_endpoint_command(self, endpoint, command):
         if len(self.endpoints) > 1:
-            cmd = zwave.MultiChannelEncap(endpoint.id, command)
+            cmd = command.MultiChannelEncap(endpoint.id, command)
             self.send_command(cmd)
         else:
             self.send_command(command)
 
     def response(self, data):
-        x = zwave.decode(data)
-        print(x)
-        if data[0] == zwave.COMMAND_CLASS_MULTI_CHANNEL and \
-           data[1] == zwave.MULTI_CHANNEL_CMD_ENCAP:
+        try:
+            cmd = serialize.deserialize(data)
+            logging.debug(cmd)
+        except serialize.DeserializeError:
+            logging.warning("Can't deserialize " + zwave.msg_str(data))
+            return
 
-            endpoint = data[2]
-            self.endpoints[endpoint].response(data[4:])
+        if type(cmd) is command.ConfigurationReport:
+            self.configuration_response(cmd)
+
+        elif type(cmd) is command.MultiChannelEncap:
+            if self.endpoints[cmd.endpoint]:
+                self.endpoints[cmd.endpoint].response(cmd.command)
+            else:
+                logging.warning("Unknown endpoint: %s" % zwave.msg_str(data))
 
         elif self.endpoints.get(1):
-            self.endpoints[1].response(data)
+            self.endpoints[1].response(cmd)
 
         else:
             logging.warning("Unhandled response: %s" % zwave.msg_str(data))
 
-    def get_config(self, parameter):
-        self.send_command(zwave.ConfigurationGet(parameter))
+    def get_configuration(self, parameter):
+        self.send_command(command.ConfigurationGet(parameter))
+
+    def configuration_response(self, cmd):
+        pass
 
 """
     def set_association(self, group, node_ids):

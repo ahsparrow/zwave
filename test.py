@@ -16,12 +16,12 @@ switch = zwave.Endpoint(node)
 controller.open("/dev/ttyACM0")
 controller.start()
 
-#gevent.spawn_later(1, node.get_config, 20)
-gevent.spawn_later(1, switch.get)
-gevent.spawn_later(2, switch.set, 0)
-#gevent.spawn_later(4, switch.set, 0)
+#gevent.spawn_later(1, switch.get)
+#gevent.spawn_later(2, switch.set, 0xff)
+gevent.spawn_later(1, node.get_configuration(50))
 
 try:
     gevent.wait()
 except KeyboardInterrupt:
     pass
+

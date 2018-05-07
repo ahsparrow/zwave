@@ -1,6 +1,6 @@
 import logging
 
-from . import zwave
+from . import command
 
 class Endpoint:
     def __init__(self, node, id=1):
@@ -12,21 +12,18 @@ class Endpoint:
     def send_command(self, command):
         self.node.send_endpoint_command(self, command)
 
-    def response(self, data):
-        logging.debug("Response: " + zwave.msg_str(data))
+    def response(self, command):
+        pass
 
     def set(self, value):
-        self.send_command(zwave.BasicSet(value))
+        self.send_command(command.BasicSet(value))
 
     def get(self):
-        self.send_command(zwave.BasicGet())
+        self.send_command(command.BasicGet())
 
 class BinarySwitch(Endpoint):
     def get(self):
-        self.send_command(zwave.BinarySwitchGet())
+        self.send_command(command.BinarySwitchGet())
 
     def set(self, value):
-        self.send_command(zwave.BinarySwitchSet(value))
-
-    def response(self, data):
-        logging.debug("Response: " + zwave.msg_str(data))
+        self.send_command(command.BinarySwitchSet(value))
