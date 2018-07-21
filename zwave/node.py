@@ -1,13 +1,20 @@
 import logging
+import yaml
 
 from . import command
 from . import serialize
 from . import zwave
 
 class Node:
-    def __init__(self, id, controller):
+    def __init__(self, id, controller, config=None):
         self.id = id
         self.controller = controller
+        if config is None:
+            self.config = {}
+        elif type(config) is dict:
+            self.config = config
+        else:
+            self.config = yaml.load(config).get('config', {})
 
         controller.register_node(self)
         self.endpoints = {}
@@ -15,19 +22,19 @@ class Node:
     def register_endpoint(self, endpoint):
         self.endpoints[endpoint.id] = endpoint
 
-    def send_command(self, command):
-        cmd_frame = serialize.serialize(command)
+    def send_command(self, cmd):
+        cmd_frame = serialize.serialize(cmd)
         msg_data = [self.id, len(cmd_frame)] + cmd_frame
         msg = zwave.request_msg(zwave.API_ZW_SEND_DATA, msg_data)
 
         self.controller.send_msg(msg)
 
-    def send_endpoint_command(self, endpoint, command):
+    def send_endpoint_command(self, endpoint, cmd):
         if len(self.endpoints) > 1:
-            cmd = command.MultiChannelEncap(endpoint.id, command)
+            cmd = command.MultiChannelEncap(endpoint.id, cmd)
             self.send_command(cmd)
         else:
-            self.send_command(command)
+            self.send_command(cmd)
 
     def response(self, data):
         try:
@@ -53,10 +60,33 @@ class Node:
             logging.warning("Unhandled response: %s" % zwave.msg_str(data))
 
     def get_configuration(self, parameter):
-        self.send_command(command.ConfigurationGet(parameter))
+        config = self.config.get(parameter)
+        if config:
+            addr = config['address']
+        elif type(parameter) is int:
+            addr = parameter
+        else:
+            logging.warning("Unknown parameter %s" % str(parameter))
+            return
+
+        self.send_command(command.ConfigurationGet(addr))
 
     def configuration_response(self, cmd):
         pass
+
+    def set_configuration(self, parameter, value, format=None):
+        config = self.config.get(parameter)
+
+        if config:
+            addr = config['address']
+            format = config['format']
+        elif type(parameter) is int and format:
+            addr = parameter
+        else:
+            logging.warning("Unknown parameter %s" % str(parameter))
+            return
+
+        self.send_command(command.ConfigurationSet(addr, value, format))
 
 """
     def set_association(self, group, node_ids):

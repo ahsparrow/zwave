@@ -1,0 +1,7 @@
+config:
+  switch_type:
+    address: 20
+    format: B
+  periodic_power_reports:
+    address: 58
+    format: B
