@@ -69,6 +69,10 @@ def deserialize(data):
 def _(cmd, data):
     cmd.value = data[0]
 
+@deserialize.register(command.MeterReport)
+def _(cmd, data):
+    pass
+
 @deserialize.register(command.MultiChannelEncap)
 def _(cmd, data):
     cmd.endpoint = data[1]

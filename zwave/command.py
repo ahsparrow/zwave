@@ -70,6 +70,12 @@ class ConfigurationReport(ConfigurationClass):
         self.parameter = -1
         self.value = 0
 
+class Meter(Command):
+    CLASS = zwave.COMMAND_CLASS_METER
+
+class MeterReport(Meter):
+    COMMAND = zwave.METER_REPORT
+
 class MultiChannel(Command):
     CLASS = zwave.COMMAND_CLASS_MULTI_CHANNEL
 
@@ -79,4 +85,3 @@ class MultiChannelEncap(MultiChannel):
     def __init__(self, endpoint=0, command=None):
         self.endpoint = endpoint
         self.command = command
-
