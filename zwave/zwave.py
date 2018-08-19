@@ -36,6 +36,19 @@ CAN = 0x18
 RESPONSE = 0
 REQUEST = 1
 
+# Transmit options
+TRANSMIT_OPTION_ACK = 0x01
+TRANSMIT_OPTION_LOW_POWER = 0x02
+TRANSMIT_OPTION_AUTO_ROUTE = 0x04
+TRANSMIT_OPTION_NO_ROUTE = 0x10
+TRANSMIT_OPTION_EXPLORE = 0x20
+
+TRANSMIT_COMPLETE_OK = 0x00
+TRANSMIT_COMPLETE_NO_ACK = 0x01
+TRANSMIT_COMPLETE_FAIL = 0x02
+TRANSMIT_COMPLETE_NOT_IDLE = 0x03
+TRANSMIT_COMPLETE_NOROUTE = 0x04
+
 #----------------------------------------------------------------------
 # Utility functions
 
@@ -49,12 +62,6 @@ def checksum(data):
     for b in data:
         checksum = checksum ^ b
     return checksum
-
-# Make request message
-def request_msg(func, data):
-    out = [len(data) + 3, REQUEST, func] + data
-    out += [checksum(out)]
-    return bytes(out)
 
 #----------------------------------------------------------------------
 # API functions

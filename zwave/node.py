@@ -25,9 +25,7 @@ class Node:
     def send_command(self, cmd):
         cmd_frame = serialize.serialize(cmd)
         msg_data = [self.id, len(cmd_frame)] + cmd_frame
-        msg = zwave.request_msg(zwave.API_ZW_SEND_DATA, msg_data)
-
-        self.controller.send_msg(msg)
+        self.controller.send_data(msg_data)
 
     def send_endpoint_command(self, endpoint, cmd):
         if len(self.endpoints) > 1:

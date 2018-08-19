@@ -17,6 +17,7 @@ class Controller:
     def __init__(self):
         self.msg_q = gevent.queue.Queue()
         self.nodes = {}
+        self.txmsg_id = 0x20
 
     def register_node(self, node):
         self.nodes[node.id] = node
@@ -51,7 +52,7 @@ class Controller:
                 logging.error("T/x timeout: " + zwave.msg_str(msg))
 
     def transmit_msg(self, msg):
-        buf = bytes([zwave.SOF]) + msg
+        buf = bytes([zwave.SOF] + msg)
 
         self.tx_result = gevent.event.AsyncResult()
         self.ser.write(buf)
@@ -91,5 +92,15 @@ class Controller:
                     if node in self.nodes:
                         self.nodes[node].response(msg[5:-1])
 
-    def send_msg(self, msg):
+    def send_data(self, data):
+        msg_len = len(data) + 5
+        msg = [msg_len, zwave.REQUEST, zwave.API_ZW_SEND_DATA] + data + \
+              [zwave.TRANSMIT_OPTION_ACK | zwave.TRANSMIT_OPTION_AUTO_ROUTE, self.txmsg_id]
+        msg += [zwave.checksum(msg)]
+
         self.msg_q.put(msg)
+
+        if self.txmsg_id == 0xff:
+            self.txmsg_id = 0x20
+        else:
+            self.txmsg_id += 1
