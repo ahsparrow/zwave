@@ -75,7 +75,7 @@ def _(cmd, data):
 
 @deserialize.register(command.MultiChannelEncap)
 def _(cmd, data):
-    cmd.endpoint = data[1]
+    cmd.endpoint = data[0]
     cmd.command = deserialize(data[2:])
 
 @deserialize.register(command.ConfigurationReport)
