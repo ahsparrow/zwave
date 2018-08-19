@@ -48,7 +48,7 @@ class Node:
             self.configuration_response(cmd)
 
         elif type(cmd) is command.MultiChannelEncap:
-            if self.endpoints[cmd.endpoint]:
+            if self.endpoints.get(cmd.endpoint):
                 self.endpoints[cmd.endpoint].response(cmd.command)
             else:
                 logging.warning("Unknown endpoint: %s" % zwave.msg_str(data))
