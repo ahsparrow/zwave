@@ -18,6 +18,7 @@ class Controller:
         self.msg_q = gevent.queue.Queue()
         self.nodes = {}
         self.txmsg_id = 0x20
+        self.sent_msgs = {}
 
     def register_node(self, node):
         self.nodes[node.id] = node
@@ -41,9 +42,11 @@ class Controller:
                     if res == zwave.CAN:
                         logging.debug("T/X cancelled, retrying...")
                         gevent.sleep(RETRY_TIME)
-                    else:
-                        if res == zwave.NAK:
-                            logging.error("T/x NAK: " + zwave.msg_str(msg))
+                    elif res == zwave.NAK:
+                        logging.error("T/x NAK: " + zwave.msg_str(msg))
+                        break
+                    elif res == zwave.ACK:
+                        self.sent_msgs[msg[-2]] = msg
                         break
                 else:
                     logging.error("T/x max. retries: " + zwave.msg_str(msg))
@@ -80,6 +83,7 @@ class Controller:
         else:
             msg_len = b[0]
             msg = self.ser.read(msg_len)
+
             if len(msg) != msg_len:
                 logging.warning(
                     "R/x message length mismatach {}/{}".format(len(msg), msg_len))
@@ -91,6 +95,12 @@ class Controller:
                     node = msg[3]
                     if node in self.nodes:
                         self.nodes[node].response(msg[5:-1])
+
+                elif msg[0] == zwave.RESPONSE and msg[1] == zwave.API_ZW_SEND_DATA:
+                    if msg[3] != zwave.TRANSMIT_COMPLETE_OK:
+                        id = msg[2]
+                        logging.warning("Transmit fail: %s",
+                                        zwave.msg_str(self.sent_msgs.pop(id, [])))
 
     def send_data(self, data):
         msg_len = len(data) + 5
