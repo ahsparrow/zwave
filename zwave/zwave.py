@@ -66,9 +66,11 @@ def checksum(data):
 #----------------------------------------------------------------------
 # API functions
 
+API_GET_INIT_DATA = 0x02
 API_APP_COMMAND_HANDLER = 0x04
 API_ZW_SEND_DATA = 0x13
 API_ZW_GET_VERSION = 0x15
+API_ZW_REQUEST_NODE_INFO = 0x60
 
 #----------------------------------------------------------------------
 # Command classes/types

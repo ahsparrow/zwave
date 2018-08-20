@@ -34,7 +34,7 @@ class Controller:
     def transmit(self):
         while 1:
             msg = self.msg_q.get()
-            logging.debug("Tx: " + zwave.msg_str(msg[1:]))
+            logging.debug("Tx: " + zwave.msg_str(msg))
 
             try:
                 for i in range(MAX_RETRIES):
@@ -46,7 +46,6 @@ class Controller:
                         logging.error("T/x NAK: " + zwave.msg_str(msg))
                         break
                     elif res == zwave.ACK:
-                        self.sent_msgs[msg[-2]] = msg
                         break
                 else:
                     logging.error("T/x max. retries: " + zwave.msg_str(msg))
@@ -55,7 +54,8 @@ class Controller:
                 logging.error("T/x timeout: " + zwave.msg_str(msg))
 
     def transmit_msg(self, msg):
-        buf = bytes([zwave.SOF] + msg)
+        payload = [len(msg) + 1] + msg
+        buf = bytes([zwave.SOF] + payload + [zwave.checksum(payload)])
 
         self.tx_result = gevent.event.AsyncResult()
         self.ser.write(buf)
@@ -91,26 +91,44 @@ class Controller:
                 logging.debug("Rx: " + zwave.msg_str(msg))
                 self.ser.write(bytes([zwave.ACK]))
 
-                if msg[1] == zwave.API_APP_COMMAND_HANDLER:
-                    node = msg[3]
-                    if node in self.nodes:
-                        self.nodes[node].response(msg[5:-1])
+                if msg[0] == zwave.RESPONSE:
+                    if msg[1] == zwave.API_APP_COMMAND_HANDLER:
+                        node = msg[3]
+                        if node in self.nodes:
+                            self.nodes[node].response(msg[5:-1])
 
-                elif msg[0] == zwave.RESPONSE and msg[1] == zwave.API_ZW_SEND_DATA:
-                    if msg[3] != zwave.TRANSMIT_COMPLETE_OK:
-                        id = msg[2]
-                        logging.warning("Transmit fail: %s",
-                                        zwave.msg_str(self.sent_msgs.pop(id, [])))
+                    elif msg[1] == zwave.API_ZW_SEND_DATA:
+                        if msg[3] != zwave.TRANSMIT_COMPLETE_OK:
+                            id = msg[2]
+                            logging.warning("Transmit fail: %s",
+                                            zwave.msg_str(self.sent_msgs.pop(id, [])))
+
+                elif msg[0] == zwave.REQUEST:
+                    if msg[1] == zwave.API_GET_INIT_DATA:
+                        num_bitfields = msg[4]
+
+                        nodes = []
+                        for n_byte, bitfield in enumerate(msg[5:5 + num_bitfields]):
+                            for n_bit in range(8):
+                                if bitfield & (1 << n_bit):
+                                    nodes.append(n_byte * 8 + n_bit + 1)
 
     def send_data(self, data):
-        msg_len = len(data) + 5
-        msg = [msg_len, zwave.REQUEST, zwave.API_ZW_SEND_DATA] + data + \
+        msg = [zwave.REQUEST, zwave.API_ZW_SEND_DATA] + data + \
               [zwave.TRANSMIT_OPTION_ACK | zwave.TRANSMIT_OPTION_AUTO_ROUTE, self.txmsg_id]
-        msg += [zwave.checksum(msg)]
 
         self.msg_q.put(msg)
+        self.sent_msgs[self.txmsg_id] = data
 
         if self.txmsg_id == 0xff:
             self.txmsg_id = 0x20
         else:
             self.txmsg_id += 1
+
+    def get_version(self):
+        msg = [zwave.REQUEST, zwave.API_ZW_GET_VERSION]
+        self.msg_q.put(msg)
+
+    def get_init_data(self):
+        msg = [zwave.REQUEST, zwave.API_GET_INIT_DATA]
+        self.msg_q.put(msg)
