@@ -57,6 +57,21 @@ class Node:
         else:
             logging.warning("Unhandled response: %s" % zwave.msg_str(data))
 
+    # Configuration
+    def set_configuration(self, parameter, value, format=None):
+        config = self.config.get(parameter)
+
+        if config:
+            addr = config['address']
+            format = config['format']
+        elif type(parameter) is int and format:
+            addr = parameter
+        else:
+            logging.warning("Unknown parameter %s" % str(parameter))
+            return
+
+        self.send_command(command.ConfigurationSet(addr, value, format))
+
     def get_configuration(self, parameter):
         config = self.config.get(parameter)
         if config:
@@ -72,54 +87,16 @@ class Node:
     def configuration_response(self, cmd):
         pass
 
-    def set_configuration(self, parameter, value, format=None):
-        config = self.config.get(parameter)
-
-        if config:
-            addr = config['address']
-            format = config['format']
-        elif type(parameter) is int and format:
-            addr = parameter
-        else:
-            logging.warning("Unknown parameter %s" % str(parameter))
-            return
-
-        self.send_command(command.ConfigurationSet(addr, value, format))
-
-"""
-    def set_association(self, group, node_ids):
-        self.send_command(self.id,
-                zwave.COMMAND_CLASS_ASSOCIATION, zwave.ASSOCIATION_SET,
-                [group] + node_ids)
-
+    # Association
     def get_association(self, group):
-        self.send_command(self.id,
-                zwave.COMMAND_CLASS_ASSOCIATION, zwave.ASSOCIATION_GET,
-                [group])
+        self.send_command(command.AssociationGet(group))
 
-    def remove_association(self, group, node_ids):
-        self.send_command(self.id,
-                zwave.COMMAND_CLASS_ASSOCIATION, zwave.ASSOCIATION_REMOVE,
-                [group] + node_ids)
-
-    def set_multi_channel_association(self, group, node_ids, endpoints):
-        self.controller.send_command(
-                self.id,
-                zwave.COMMAND_CLASS_MULTI_CHANNEL_ASSOCIATION_V2,
-                zwave.MULTI_CHANNEL_ASSOCIATION_SET_V2,
-                [group] + node_ids + [zwave.MULTI_CHANNEL_ASSOCIATION_SET_MARKER_V2] + endpoints)
-
+    # Multi-channel association
     def get_multi_channel_association(self, group):
-        self.controller.send_command(
-                self.id,
-                zwave.COMMAND_CLASS_MULTI_CHANNEL_ASSOCIATION_V2,
-                zwave.MULTI_CHANNEL_ASSOCIATION_GET_V2,
-                [group])
+        self.send_command(command.MultiChannelAssociationGet(group))
 
-    def remove_multi_channel_association(self, group, node_ids, endpoints):
-        self.controller.send_command(
-                self.id,
-                zwave.COMMAND_CLASS_MULTI_CHANNEL_ASSOCIATION_V2,
-                zwave.MULTI_CHANNEL_ASSOCIATION_REMOVE_V2,
-                [group] + node_ids + [zwave.MULTI_CHANNEL_ASSOCIATION_REMOVE_MARKER_V2] + endpoints)
-"""
+    def remove_multi_channel_association(self, group, nodes, multi_channel_nodes):
+        self.send_command(command.MultiChannelAssociationRemove(group, nodes, multi_channel_nodes))
+
+    def set_multi_channel_association(self, group, nodes, multi_channel_nodes):
+        self.send_command(command.MultiChannelAssociationSet(group, nodes, multi_channel_nodes))
