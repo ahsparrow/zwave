@@ -1,26 +1,25 @@
 import logging
-import yaml
 
 from . import command
 from . import serialize
 from . import zwave
 
 class Node:
-    def __init__(self, id, controller, config=None):
-        self.id = id
+    def __init__(self, controller, id, name="", config=None):
         self.controller = controller
+        self.id = id
+        self.name = name
+
         if config is None:
             self.config = {}
-        elif type(config) is dict:
-            self.config = config
         else:
-            self.config = yaml.load(config).get('config', {})
+            self.config = config
 
         controller.register_node(self)
         self.endpoints = {}
 
     def register_endpoint(self, endpoint):
-        self.endpoints[endpoint.id] = endpoint
+        self.endpoints[endpoint.endpoint] = endpoint
 
     def send_command(self, cmd):
         cmd_frame = serialize.serialize(cmd)
@@ -29,7 +28,7 @@ class Node:
 
     def send_endpoint_command(self, endpoint, cmd):
         if len(self.endpoints) > 1:
-            cmd = command.MultiChannelEncap(endpoint.id, cmd)
+            cmd = command.MultiChannelEncap(endpoint.endpoint, cmd)
             self.send_command(cmd)
         else:
             self.send_command(cmd)

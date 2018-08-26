@@ -3,17 +3,21 @@ import logging
 from . import command
 
 class Endpoint:
-    def __init__(self, node, id=1):
+    def __init__(self, node, endpoint=1, name=""):
         self.node = node
-        self.id = id
+        self.endpoint = endpoint
+        self.name = name
 
         node.register_endpoint(self)
 
-    def send_command(self, command):
-        self.node.send_endpoint_command(self, command)
+        self.value = 0
 
-    def response(self, command):
-        pass
+    def send_command(self, cmd):
+        self.node.send_endpoint_command(self, cmd)
+
+    def response(self, cmd):
+        if isinstance(cmd, command.BasicReport):
+            self.value = cmd.value
 
     def set(self, value):
         self.send_command(command.BasicSet(value))
@@ -27,3 +31,9 @@ class BinarySwitch(Endpoint):
 
     def set(self, value):
         self.send_command(command.BinarySwitchSet(value))
+
+    def response(self, cmd):
+        if isinstance(cmd, command.BinarySwitchReport):
+            self.value = cmd.value
+        else:
+            super().response(cmd)
