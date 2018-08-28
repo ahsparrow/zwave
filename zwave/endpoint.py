@@ -1,3 +1,4 @@
+from gevent.event import AsyncResult
 import logging
 
 from . import command
@@ -10,7 +11,7 @@ class Endpoint:
 
         node.register_endpoint(self)
 
-        self.value = 0
+        self.async_value = AsyncResult()
 
     def send_command(self, cmd):
         self.node.send_endpoint_command(self, cmd)
@@ -27,13 +28,22 @@ class Endpoint:
 
 class BinarySwitch(Endpoint):
     def get(self):
+        self.async_value = AsyncResult()
         self.send_command(command.BinarySwitchGet())
+
+        try:
+            result = self.async_value.get(timeout=1.0)
+        except gevent.Timeout:
+            logging.error("BasicSwitch get timeout: %s" % self.name)
+            result = None
+
+        return result
 
     def set(self, value):
         self.send_command(command.BinarySwitchSet(value))
 
     def response(self, cmd):
         if isinstance(cmd, command.BinarySwitchReport):
-            self.value = cmd.value
+            self.async_value.set(cmd.value)
         else:
             super().response(cmd)

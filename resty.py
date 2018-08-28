@@ -16,7 +16,7 @@ def index():
 def get_nodes():
     nodes = current_app.config['ZWAVE']['nodes']
 
-    ret = {n: nodes[n].name for n in nodes}
+    ret = [{'id': n, 'name': nodes[n].name} for n in nodes]
     return jsonify(ret)
 
 def get_config_params(node_id):
@@ -57,7 +57,6 @@ def set_config(node_id, param):
         logging.warning("Unknown node: %s" % node_id)
         return jsonify("error")
 
-
 #----------------------------------------------------------------------
 # Switch access
 
@@ -65,13 +64,19 @@ def set_config(node_id, param):
 def get_switches():
     switches = current_app.config['ZWAVE']['switches']
 
-    ret = {s: switches[s].name for s in switches}
+    ret = [{'id': s, 'name': switches[s].name} for s in switches]
     return jsonify(ret)
 
 # Get current switch state
 def get_switch(switch_id):
     switch = current_app.config['ZWAVE']['switches'].get(switch_id)
-    return jsonify({})
+    if switch:
+        value = switch.get()
+    else:
+        logging.warning("Unknown switch: %s" % switch_id)
+        value = None
+
+    return jsonify(value)
 
 # Set switch state
 def set_switch(switch_id):
@@ -80,9 +85,10 @@ def set_switch(switch_id):
     switch = current_app.config['ZWAVE']['switches'].get(switch_id)
     if switch:
         switch.set(0xff if value == "on" else 0)
-        return jsonify({})
+        return jsonify("ok")
     else:
-        return jsonify({'error': "Unknown switch"})
+        logging.warning("Unknown switch: %d" % switch_id)
+        return jsonify("error")
 
 #----------------------------------------------------------------------
 # Network
