@@ -1,3 +1,4 @@
+from gevent.event import AsyncResult
 import logging
 
 from . import command
@@ -14,6 +15,7 @@ class Node:
             self.config = {}
         else:
             self.config = config
+        self.config_result = {}
 
         controller.register_node(self)
         self.endpoints = {}
@@ -67,9 +69,10 @@ class Node:
             addr = parameter
         else:
             logging.warning("Unknown parameter %s" % str(parameter))
-            return
+            return False
 
         self.send_command(command.ConfigurationSet(addr, value, format))
+        return True
 
     def get_configuration(self, parameter):
         config = self.config.get(parameter)
@@ -79,12 +82,22 @@ class Node:
             addr = parameter
         else:
             logging.warning("Unknown parameter %s" % str(parameter))
-            return
+            return None
 
+        async_res = AsyncResult()
+        self.config_result[addr] = async_res
         self.send_command(command.ConfigurationGet(addr))
 
+        try:
+            result = async_res.get(timeout=1.0)
+        except gevent.Timeout:
+            logging.error("Config get timeout: %s" % self.name)
+            result = None
+
+        return result
+
     def configuration_response(self, cmd):
-        pass
+        self.config_result[cmd.parameter].set(cmd.value)
 
     # Association
     def get_association(self, group):
