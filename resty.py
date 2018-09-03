@@ -1,7 +1,8 @@
 from gevent import monkey
 monkey.patch_all()
+import gevent
 
-from flask import Flask, jsonify, current_app, request
+from flask import Flask, jsonify, current_app, request, abort
 from gevent import wsgi
 import logging
 import yaml
@@ -16,46 +17,52 @@ def index():
 def get_nodes():
     nodes = current_app.config['ZWAVE']['nodes']
 
-    ret = [{'id': n, 'name': nodes[n].name} for n in nodes]
-    return jsonify(ret)
+    response = jsonify([{'id': n, 'name': nodes[n].name} for n in nodes])
+    return response
 
 def get_config_params(node_id):
     node = current_app.config['ZWAVE']['nodes'].get(node_id)
     if node:
-        params = list(node.config.keys())
+        response = jsonify(list(node.config.keys()))
     else:
-        params = []
+        response = "Unknown node", 404
 
-    return jsonify(params)
+    return response
 
 def get_config(node_id, param):
     node = current_app.config['ZWAVE']['nodes'].get(node_id)
     if node:
-        value = node.get_configuration(param)
+        try:
+            value = node.get_configuration(param)
+        except gevent.Timeout:
+            resp = "Z-Wave timeout", 500
+        else:
+            if value:
+                resp = jsonify(value)
+            else:
+                resp = "Unknown parameter", 404
     else:
         logging.warning("Unknown node: %s" % node_id)
-        value = None
+        resp = "Unknown node", 404
 
-    return jsonify(value)
+    return resp
 
 def set_config(node_id, param):
     node = current_app.config['ZWAVE']['nodes'].get(node_id)
     if node:
         try:
-            value = int(request.form.get('value'))
+            value = int(request.get_json())
         except:
-            value = None
             logging.warning("Bad configuration value")
-            return jsonify("error")
+            return "Bad configuration value", 400
 
-        if value:
-            if node.set_configuration(param, value):
-                return jsonify("ok")
-            else:
-                return jsonify("error")
+        if node.set_configuration(param, value):
+            return ""
+        else:
+            return "Unknown configuration parameter", 404
     else:
         logging.warning("Unknown node: %s" % node_id)
-        return jsonify("error")
+        return "Unknown node", 404
 
 #----------------------------------------------------------------------
 # Switch access
@@ -64,31 +71,41 @@ def set_config(node_id, param):
 def get_switches():
     switches = current_app.config['ZWAVE']['switches']
 
-    ret = [{'id': s, 'name': switches[s].name} for s in switches]
-    return jsonify(ret)
+    switch_info = [{'id': s, 'name': switches[s].name} for s in switches]
+    return jsonify(switch_info)
 
 # Get current switch state
 def get_switch(switch_id):
     switch = current_app.config['ZWAVE']['switches'].get(switch_id)
     if switch:
-        value = switch.get()
+        try:
+            val = "off" if switch.get() == 0 else "on"
+        except gevent.Timeout:
+            resp = "Z-Wave timeout", 500
+        else:
+            resp = jsonify(val)
     else:
         logging.warning("Unknown switch: %s" % switch_id)
-        value = None
+        resp = "Unknown switch", 404
 
-    return jsonify(value)
+    return resp
 
 # Set switch state
 def set_switch(switch_id):
-    value = request.form.get('value', "off")
-
     switch = current_app.config['ZWAVE']['switches'].get(switch_id)
     if switch:
-        switch.set(0xff if value == "on" else 0)
-        return jsonify("ok")
+        value = request.get_json()
+        if value in ["on", "off"]:
+            switch.set(0xff if value == "on" else 0)
+            resp = ""
+        else:
+            logging.warning("Bad switch value: %s" % str(value))
+            resp = "Bad switch value", 400
     else:
-        logging.warning("Unknown switch: %d" % switch_id)
-        return jsonify("error")
+        logging.warning("Unknown switch: %s", switch_id)
+        resp = "Unknown switch", 404
+
+    return resp
 
 #----------------------------------------------------------------------
 # Network
@@ -124,13 +141,16 @@ def create_app():
     app.add_url_rule("/", view_func=index)
 
     app.add_url_rule("/api/switch/", view_func=get_switches, methods=['GET'])
-    app.add_url_rule("/api/switch/<int:switch_id>", view_func=set_switch, methods=['PUT'])
-    app.add_url_rule("/api/switch/<int:switch_id>", view_func=get_switch, methods=['GET'])
+    app.add_url_rule("/api/switch/<switch_id>", view_func=set_switch, methods=['PUT'])
+    app.add_url_rule("/api/switch/<switch_id>", view_func=get_switch, methods=['GET'])
 
     app.add_url_rule("/api/node/", view_func=get_nodes, methods=['GET'])
-    app.add_url_rule("/api/node/<int:node_id>/config/", view_func=get_config_params, methods=['GET'])
-    app.add_url_rule("/api/node/<int:node_id>/config/<param>", view_func=get_config, methods=['GET'])
-    app.add_url_rule("/api/node/<int:node_id>/config/<param>", view_func=set_config, methods=['PUT'])
+    app.add_url_rule("/api/node/<node_id>/config/", view_func=get_config_params, methods=['GET'])
+    app.add_url_rule("/api/node/<node_id>/config/<param>", view_func=get_config, methods=['GET'])
+    app.add_url_rule("/api/node/<node_id>/config/<param>", view_func=set_config, methods=['PUT'])
+
+    app.add_url_rule("/api/node/<node_id>/multi_channel_association",
+                     view_func=get_multi_channel_association, methods=['GET'])
 
     return app
 

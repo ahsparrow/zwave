@@ -1,16 +1,16 @@
 nodes:
-  - id: 1
-    name: Front door lights
+  - id: front_door_switch
+    name: Front door light switch
     config: fgs_223.yaml
     node: 4
 
 switches:
-  - id: 1
+  - id: outside_light
     name: Outside light
-    nodeid: 1
+    nodeid: front_door_switch
     endpoint: 1
 
-  - id: 2
+  - id: void_light
     name: Void light
-    nodeid: 1
+    nodeid: front_door_switch
     endpoint: 2

@@ -88,12 +88,7 @@ class Node:
         self.config_result[addr] = async_res
         self.send_command(command.ConfigurationGet(addr))
 
-        try:
-            result = async_res.get(timeout=1.0)
-        except gevent.Timeout:
-            logging.error("Config get timeout: %s" % self.name)
-            result = None
-
+        result = async_res.get(timeout=1.0)
         return result
 
     def configuration_response(self, cmd):
