@@ -1,0 +1,8 @@
+config:
+  indicator_light:
+    address: 1
+    format: B
+
+  memory_function:
+    address: 2
+    format: B
