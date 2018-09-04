@@ -17,6 +17,8 @@ class Node:
             self.config = config
         self.config_result = {}
 
+        self.multi_channel_association_result = {}
+
         controller.register_node(self)
         self.endpoints = {}
 
@@ -45,6 +47,9 @@ class Node:
 
         if type(cmd) is command.ConfigurationReport:
             self.configuration_response(cmd)
+
+        elif type(cmd) is command.MultiChannelAssociationReport:
+            self.multi_channel_association_response(cmd)
 
         elif type(cmd) is command.MultiChannelEncap:
             if self.endpoints.get(cmd.endpoint):
@@ -99,8 +104,19 @@ class Node:
         self.send_command(command.AssociationGet(group))
 
     # Multi-channel association
+    def multi_channel_association_response(self, cmd):
+        self.multi_channel_association_result[cmd.group].set(
+                {'nodes': cmd.nodes,
+                 'multi_channel_nodes': cmd.multi_channel_nodes})
+
     def get_multi_channel_association(self, group):
+        async_res = AsyncResult()
+        self.multi_channel_association_result[group] = async_res
+
         self.send_command(command.MultiChannelAssociationGet(group))
+
+        result = async_res.get(timeout=1.0)
+        return result
 
     def remove_multi_channel_association(self, group, nodes, multi_channel_nodes):
         self.send_command(command.MultiChannelAssociationRemove(group, nodes, multi_channel_nodes))

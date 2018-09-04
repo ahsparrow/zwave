@@ -4,6 +4,11 @@ nodes:
     config: fgs_223.yaml
     node: 4
 
+  - id: socket1
+    name: Mains socket
+    config: tkb_tz68.yaml
+    node: 5
+
 switches:
   - id: outside_light
     name: Outside light
@@ -14,3 +19,8 @@ switches:
     name: Void light
     nodeid: front_door_switch
     endpoint: 2
+
+  - id: mains_switch
+    name: Mains switch
+    nodeid: socket1
+    endpoint: 1

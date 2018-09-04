@@ -64,6 +64,51 @@ def set_config(node_id, param):
         logging.warning("Unknown node: %s" % node_id)
         return "Unknown node", 404
 
+def get_multi_channel_association(node_id, group):
+    node = current_app.config['ZWAVE']['nodes'].get(node_id)
+    if node:
+        try:
+            value = node.get_multi_channel_association(group)
+        except gevent.Timeout:
+            resp = "Z-Wave timeout", 500
+        else:
+            resp = jsonify(value)
+    else:
+        logging.warning("Unknown node: %s" % node_id)
+        resp = "Unknown node", 404
+
+    return resp
+
+def set_multi_channel_association(node_id, group):
+    node = current_app.config['ZWAVE']['nodes'].get(node_id)
+    if node:
+        data = request.get_json()
+        nodes = data.get('nodes', [])
+        mc_nodes = data.get('multi_channel_nodes', [])
+
+        node.set_multi_channel_association(group, nodes, mc_nodes)
+        resp = ""
+    else:
+        logging.warning("Unknown node: %s" % node_id)
+        resp = "Unknown node", 404
+
+    return resp
+
+def remove_multi_channel_association(node_id, group):
+    node = current_app.config['ZWAVE']['nodes'].get(node_id)
+    if node:
+        data = request.get_json()
+        nodes = data.get('nodes', [])
+        mc_nodes = data.get('multi_channel_nodes', [])
+
+        node.remove_multi_channel_association(group, nodes, mc_nodes)
+        resp = ""
+    else:
+        logging.warning("Unknown node: %s" % node_id)
+        resp = "Unknown node", 404
+
+    return resp
+
 #----------------------------------------------------------------------
 # Switch access
 
@@ -149,8 +194,12 @@ def create_app():
     app.add_url_rule("/api/node/<node_id>/config/<param>", view_func=get_config, methods=['GET'])
     app.add_url_rule("/api/node/<node_id>/config/<param>", view_func=set_config, methods=['PUT'])
 
-    app.add_url_rule("/api/node/<node_id>/multi_channel_association",
+    app.add_url_rule("/api/node/<node_id>/multi_channel_association/<int:group>",
                      view_func=get_multi_channel_association, methods=['GET'])
+    app.add_url_rule("/api/node/<node_id>/multi_channel_association/<int:group>",
+                     view_func=set_multi_channel_association, methods=['PUT'])
+    app.add_url_rule("/api/node/<node_id>/multi_channel_association/<int:group>",
+                     view_func=remove_multi_channel_association, methods=['DELETE'])
 
     return app
 
