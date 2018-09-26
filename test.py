@@ -1,38 +1,39 @@
+import gevent
+from gevent import monkey; monkey.patch_all()
+
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
-import gevent
-from gevent import monkey; monkey.patch_all()
+import yaml
 
 import zwave
 
 controller = zwave.Controller()
 
-node = zwave.Node(4, controller, open("fgs_223.yaml"))
-#switch = zwave.Endpoint(node)
-switch1 = zwave.Endpoint(node, id=1)
-switch2 = zwave.Endpoint(node, id=2)
+config = yaml.load(open("fgs_223.yaml"))
+
+node = zwave.Node(controller, 4, config=config)
+switch1 = zwave.BinarySwitch(node, endpoint=1)
+switch2 = zwave.BinarySwitch(node, endpoint=2)
 
 controller.open("/dev/ttyACM0")
 controller.start()
 
-gevent.spawn_later(1, switch1.set, 0)
-gevent.spawn_later(1, switch2.set, 0xff)
-gevent.spawn_later(2, switch1.set, 0xff)
-gevent.spawn_later(2, switch2.set, 0)
-gevent.spawn_later(3, switch1.set, 0)
-gevent.spawn_later(3, switch2.set, 0xff)
-gevent.spawn_later(4, switch1.set, 0xff)
-gevent.spawn_later(4, switch2.set, 0)
-gevent.spawn_later(5, switch1.set, 0)
+g = []
+#g.append(gevent.spawn_later(1, node.set_multi_channel_association, 1, [], [[1, 1]]))
+#g.append(gevent.spawn_later(4, node.get_multi_channel_association, 1))
+#g.append(gevent.spawn_later(1, controller.get_init_data))
+#g.append(gevent.spawn_later(1, switch1.set, 0))
 #gevent.spawn_later(1, node.set_configuration, 58, 3599, "H")
 #gevent.spawn_later(1, node.set_configuration, 'switch_type', 1)
 #gevent.spawn_later(2, node.get_configuration, 'switch_type')
-
 #gevent.spawn_later(1, node.set_configuration, 58, 0, "B")
 
+g.append(gevent.spawn_later(1, switch1.get))
+
 try:
-    gevent.wait()
+    gevent.joinall(g)
+    gevent.wait(timeout=100)
 except KeyboardInterrupt:
     pass
 
