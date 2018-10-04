@@ -23,7 +23,7 @@
 # 9-  Payload data
 # N   Checksum
 
-#----------------------------------------------------------------------
+#-----------------------------------------------------------------------
 # Frame parameters
 
 # Frame type
@@ -49,7 +49,7 @@ TRANSMIT_COMPLETE_FAIL = 0x02
 TRANSMIT_COMPLETE_NOT_IDLE = 0x03
 TRANSMIT_COMPLETE_NOROUTE = 0x04
 
-#----------------------------------------------------------------------
+#-----------------------------------------------------------------------
 # Utility functions
 
 # Format bytes as hex string
@@ -63,7 +63,7 @@ def checksum(data):
         checksum = checksum ^ b
     return checksum
 
-#----------------------------------------------------------------------
+#-----------------------------------------------------------------------
 # API functions
 
 API_GET_INIT_DATA = 0x02
@@ -72,7 +72,7 @@ API_ZW_SEND_DATA = 0x13
 API_ZW_GET_VERSION = 0x15
 API_ZW_REQUEST_NODE_INFO = 0x60
 
-#----------------------------------------------------------------------
+#-----------------------------------------------------------------------
 # Command classes/types
 
 COMMAND_CLASS_BASIC = 0x20

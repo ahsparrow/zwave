@@ -32,17 +32,13 @@ def get_config_params(node_id):
 def get_config(node_id, param):
     node = current_app.config['ZWAVE']['nodes'].get(node_id)
     if node:
-        try:
-            value = node.get_configuration(param)
-        except gevent.Timeout:
-            resp = "Z-Wave timeout", 500
+        value = node.get_configuration(param)
+
+        if value:
+            resp = jsonify(value)
         else:
-            if value:
-                resp = jsonify(value)
-            else:
-                resp = "Unknown parameter", 404
+            resp = "Unknown parameter", 404
     else:
-        logging.warning("Unknown node: %s" % node_id)
         resp = "Unknown node", 404
 
     return resp
@@ -180,6 +176,18 @@ def build_zwave(config_file, controller):
 
     return {'nodes': nodes, 'switches': switches}
 
+#----------------------------------------------------------------------
+# Flask application
+
+def handle_not_found(e):
+    return "", 404
+
+def handle_transmit_error(e):
+    return "Z-Wave transmit error", 404
+
+def handle_timeout_error(e):
+    return "Z-Wave timeout", 404
+
 def create_app():
     app = Flask(__name__)
 
@@ -200,6 +208,11 @@ def create_app():
                      view_func=set_multi_channel_association, methods=['PUT'])
     app.add_url_rule("/api/node/<node_id>/multi_channel_association/<int:group>",
                      view_func=remove_multi_channel_association, methods=['DELETE'])
+
+    # Error handlers
+    app.register_error_handler(404, handle_not_found)
+    app.register_error_handler(zwave.TransmitError, handle_transmit_error)
+    app.register_error_handler(zwave.Timeout, handle_timeout_error)
 
     return app
 
