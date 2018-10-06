@@ -222,9 +222,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("config_file", help="Z-Wave configuration file",
                         type=argparse.FileType("r"))
-    parser.add_argument("-p", "--port", default="/dev/ttyACM0",
-                        help="Z-Wave controller serial port")
     parser.add_argument("-d", "--debug", action="store_true")
+    parser.add_argument("-s", "--serial", default="/dev/ttyACM0",
+                        help="Z-Wave controller serial device")
+    parser.add_argument("-p", "--port", default="5000", type=int,
+                        help="HTTP server port")
     args = parser.parse_args()
 
     if args.debug:
@@ -235,11 +237,11 @@ if __name__ == "__main__":
 
     zw = build_zwave(args.config_file, controller)
 
-    controller.open(args.port)
+    controller.open(args.serial)
     controller.start()
 
     app = create_app()
     app.config['ZWAVE'] = zw
 
-    server = pywsgi.WSGIServer(('127.0.0.1', 5000), app)
+    server = pywsgi.WSGIServer(('0.0.0.0', args.port), app)
     server.serve_forever()
