@@ -3,7 +3,7 @@ monkey.patch_all()
 import gevent
 
 from flask import Flask, jsonify, current_app, request, abort
-from gevent import wsgi
+from gevent import pywsgi
 import logging
 import yaml
 import zwave
@@ -241,5 +241,5 @@ if __name__ == "__main__":
     app = create_app()
     app.config['ZWAVE'] = zw
 
-    server = wsgi.WSGIServer(('127.0.0.1', 5000), app)
+    server = pywsgi.WSGIServer(('127.0.0.1', 5000), app)
     server.serve_forever()
