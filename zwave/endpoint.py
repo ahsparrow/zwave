@@ -1,4 +1,5 @@
-from gevent.event import AsyncResult, Timeout
+from gevent import Timeout
+from gevent.event import AsyncResult
 import logging
 
 from . import command
