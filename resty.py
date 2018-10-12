@@ -218,20 +218,38 @@ def create_app():
 
 if __name__ == "__main__":
     import argparse
+    import logging
+    import logging.handlers
+    import os.path
 
     parser = argparse.ArgumentParser()
     parser.add_argument("config_file", help="Z-Wave configuration file",
                         type=argparse.FileType("r"))
-    parser.add_argument("-d", "--debug", action="store_true")
+    parser.add_argument("--loglevel", help="Logging level, DEBUG, etc.",
+                        default="WARNING")
+    parser.add_argument("--logdir", help="Log file directory")
     parser.add_argument("-s", "--serial", default="/dev/ttyACM0",
                         help="Z-Wave controller serial device")
     parser.add_argument("-p", "--port", default="5000", type=int,
                         help="HTTP server port")
     args = parser.parse_args()
 
-    if args.debug:
-        import logging
-        logging.basicConfig(level=logging.DEBUG)
+    # Configure logging
+    logger = logging.getLogger()
+
+    loglevel = getattr(logging, args.loglevel.upper(), None)
+    if not isinstance(loglevel, int):
+        parser.error("Unrecognised log level")
+    else:
+        logger.setLevel(loglevel)
+
+    if args.logdir:
+        logfile = os.path.join(args.logdir, "zwave.log")
+        handler = logging.handlers.RotatingFileHandler(logfile, "a", 1000000, 5)
+        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s",
+                                      datefmt="%y/%m/%d %H:%M:%S")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
     controller = zwave.Controller()
 
