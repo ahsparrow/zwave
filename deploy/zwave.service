@@ -1,0 +1,15 @@
+[Unit]
+Description="ZWave REST service"
+After=network.target
+
+[Service]
+User=zwave
+Group=zwave
+RuntimeDirectory=zwave
+LogsDirectory=zwave
+WorkingDirectory=/srv/www/zwave
+ExecStart=/srv/www/zwave/venv/bin/python resty.py -s /dev/ttyACM0 --logdir %L/zwave config.yaml
+
+[Install]
+WantedBy=multi-user.target
+
