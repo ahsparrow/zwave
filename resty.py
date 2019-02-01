@@ -149,6 +149,53 @@ def set_switch(switch_id):
     return resp
 
 #----------------------------------------------------------------------
+# Dimmer access
+
+# List of dimmer node/names
+def get_dimmers():
+    dimmers = current_app.config['ZWAVE']['dimmers']
+
+    dimmer_info = [{'id': d, 'name': dimmers[d].name} for d in dimmers]
+    return jsonify(dimmer_info)
+
+# Get current dimmer level
+def get_dimmer(dimmer_id):
+    dimmer = current_app.config['ZWAVE']['dimmers'].get(dimmer_id)
+    if dimmer:
+        try:
+            val = dimmer.get()
+        except gevent.Timeout:
+            resp = "Z-Wave timeout", 500
+        else:
+            resp = jsonify(val)
+    else:
+        logging.warning("Unknown dimmer: %s" % dimmer_id)
+        resp = "Unknown dimmer", 404
+
+    return resp
+
+# Set dimmer level
+def set_dimmer(dimmer_id):
+    dimmer = current_app.config['ZWAVE']['dimmers'].get(dimmer_id)
+    if dimmer:
+        value = request.get_json()
+        try:
+            value = int(value)
+            if value < 0 or value > 99:
+                raise ValueError
+            dimmer.set(value)
+            resp = ""
+
+        except ValueError:
+            logging.warning("Bad dimmer level: %s" % str(value))
+            resp = "Bad dimmer level", 400
+    else:
+        logging.warning("Unknown dimmer: %s", dimmer_id)
+        resp = "Unknown dimmer", 404
+
+    return resp
+
+#----------------------------------------------------------------------
 # Network
 
 def build_zwave(config_file, controller):
@@ -174,7 +221,15 @@ def build_zwave(config_file, controller):
         switches[s['id']] = zwave.BinarySwitch(
                 nodes[s['nodeid']], endpoint, name)
 
-    return {'nodes': nodes, 'switches': switches}
+    dimmers = {}
+    for d in network.get('dimmers'):
+        name = d.get('name', "")
+        endpoint = d.get('endpoint', 1)
+
+        dimmers[d['id']] = zwave.MultilevelSwitch(
+                nodes[d['nodeid']], endpoint, name)
+
+    return {'nodes': nodes, 'switches': switches, 'dimmers': dimmers}
 
 #----------------------------------------------------------------------
 # Flask application
@@ -196,6 +251,10 @@ def create_app():
     app.add_url_rule("/api/switch/", view_func=get_switches, methods=['GET'])
     app.add_url_rule("/api/switch/<switch_id>", view_func=set_switch, methods=['PUT'])
     app.add_url_rule("/api/switch/<switch_id>", view_func=get_switch, methods=['GET'])
+
+    app.add_url_rule("/api/dimmer/", view_func=get_dimmers, methods=['GET'])
+    app.add_url_rule("/api/dimmer/<dimmer_id>", view_func=set_dimmer, methods=['PUT'])
+    app.add_url_rule("/api/dimmer/<dimmer_id>", view_func=get_dimmer, methods=['GET'])
 
     app.add_url_rule("/api/node/", view_func=get_nodes, methods=['GET'])
     app.add_url_rule("/api/node/<node_id>/config/", view_func=get_config_params, methods=['GET'])

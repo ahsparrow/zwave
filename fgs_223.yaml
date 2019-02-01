@@ -1,32 +1,31 @@
-config:
-  switch_type:
-    address: 20
-    format: B
+switch_type:
+  address: 20
+  format: B
 
-  power_reports1:
-    address: 50
-    format: B
-  minimal_power_reports1:
-    address: 51
-    format: B
-  energy_reports1:
-    address: 53
-    format: H
+power_reports1:
+  address: 50
+  format: B
+minimal_power_reports1:
+  address: 51
+  format: B
+energy_reports1:
+  address: 53
+  format: H
 
-  power_reports2:
-    address: 54
-    format: B
-  minimal_power_reports2:
-    address: 55
-    format: B
-  energy_reports2:
-    address: 57
-    format: H
+power_reports2:
+  address: 54
+  format: B
+minimal_power_reports2:
+  address: 55
+  format: B
+energy_reports2:
+  address: 57
+  format: H
 
-  periodic_power_reports:
-    address: 58
-    format: H
+periodic_power_reports:
+  address: 58
+  format: H
 
-  periodic_energy_reports:
-    address: 59
-    format: H
+periodic_energy_reports:
+  address: 59
+  format: H

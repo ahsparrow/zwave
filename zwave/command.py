@@ -139,3 +139,22 @@ class MultiChannelAssociationSet(MultiChannelAssociation):
         self.group = group
         self.nodes = nodes
         self.multi_channel_nodes = multi_channel_nodes
+
+class MultilevelSwitchCommand(Command):
+    CLASS = zwave.COMMAND_CLASS_SWITCH_MULTILEVEL
+
+class MultilevelSwitchGet(MultilevelSwitchCommand):
+    COMMAND = zwave.SWITCH_MULTILEVEL_GET
+
+class MultilevelSwitchSet(MultilevelSwitchCommand):
+    COMMAND = zwave.SWITCH_MULTILEVEL_SET
+
+    def __init__(self, value=99):
+        self.value = value
+
+class MultilevelSwitchReport(MultilevelSwitchCommand):
+    COMMAND = zwave.SWITCH_MULTILEVEL_REPORT
+
+    def __init__(self, value=0):
+        self.value = value
+

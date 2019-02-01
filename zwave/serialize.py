@@ -21,6 +21,7 @@ def _(cmd):
 
 @serialize.register(command.BasicSet)
 @serialize.register(command.BinarySwitchSet)
+@serialize.register(command.MultilevelSwitchSet)
 def _(cmd):
     return list(cmd.sig()) + [cmd.value]
 
@@ -86,6 +87,7 @@ def _(cmd, data):
 
 @deserialize.register(command.BasicReport)
 @deserialize.register(command.BinarySwitchReport)
+@deserialize.register(command.MultilevelSwitchReport)
 def _(cmd, data):
     cmd.value = data[0]
 

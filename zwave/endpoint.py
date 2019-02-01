@@ -48,3 +48,25 @@ class BinarySwitch(Endpoint):
             self.async_value.set(cmd.value)
         else:
             super().response(cmd)
+
+class MultilevelSwitch(Endpoint):
+    def get(self):
+        self.async_value = AsyncResult()
+        self.send_command(command.MultilevelSwitchGet())
+
+        try:
+            result = self.async_value.get(timeout=1.0)
+        except Timeout:
+            logging.error("MultilevelSwitch get timeout: %s" % self.name)
+            result = None
+
+        return result
+
+    def set(self, value):
+        return self.send_command(command.MultilevelSwitchSet(value))
+
+    def response(self, cmd):
+        if isinstance(cmd, command.MultilevelSwitchReport):
+            self.async_value.set(cmd.value)
+        else:
+            super().response(cmd)

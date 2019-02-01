@@ -6,7 +6,7 @@ from . import serialize
 from . import zwave
 
 class Node:
-    def __init__(self, controller, id, name="", config=None):
+    def __init__(self, controller, id, name="Node", config=None):
         self.controller = controller
         self.id = id
         self.name = name
@@ -42,7 +42,7 @@ class Node:
             cmd = serialize.deserialize(data)
             logging.debug(cmd)
         except serialize.DeserializeError:
-            logging.warning("Can't deserialize " + zwave.msg_str(data))
+            logging.warning("%s: Can't deserialize %s" % (self.name, zwave.msg_str(data)))
             return
 
         if type(cmd) is command.ConfigurationReport:
@@ -97,7 +97,11 @@ class Node:
         return result
 
     def configuration_response(self, cmd):
-        self.config_result[cmd.parameter].set(cmd.value)
+        result = self.config_result.get(cmd.parameter)
+        if  result:
+            result.set(cmd.value)
+        else:
+            logging.warning("Unexpected configuration response")
 
     # Association
     def get_association(self, group):
