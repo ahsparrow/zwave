@@ -206,8 +206,7 @@ def build_zwave(config_file, controller):
         name = n.get('name', "")
         config_file = n.get('config')
         if config_file:
-            data = yaml.load(open(config_file))
-            config = data.get('config', {})
+            config = yaml.load(open(config_file))
         else:
             config = {}
 

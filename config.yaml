@@ -11,6 +11,7 @@ nodes:
 
   - id: stair_light
     name: Stair light
+    config: fgd_212.yaml
     node: 6
 
 switches:
