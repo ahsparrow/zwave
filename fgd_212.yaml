@@ -1,0 +1,31 @@
+minimum_brightness:
+    address: 1
+    format: B
+
+maximum_brightness:
+    address: 2
+    format: B
+
+switch_type:
+    address: 20
+    format: B
+
+load_control_mode:
+    address: 30
+    format: B
+
+load_control_mode_result:
+    address: 31
+    format: B
+
+active_power_reports:
+    address: 50
+    format: B
+
+periodic_power_energy_reports:
+    address: 52
+    format: H
+
+energy_reports:
+    address: 53
+    format: H
