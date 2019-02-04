@@ -5,12 +5,12 @@ nodes:
     node: 4
 
   - id: socket1
-    name: Mains socket
+    name: "Mains socket #1"
     config: tkb_tz68.yaml
     node: 5
 
-  - id: stair_light
-    name: Stair light
+  - id: overstair_light
+    name: Over stair light
     config: fgd_212.yaml
     node: 6
 
@@ -20,18 +20,18 @@ switches:
     nodeid: front_door_lights
     endpoint: 1
 
-  - id: front_door_light
-    name: Front door light
+  - id: void_light
+    name: Void light
     nodeid: front_door_lights
     endpoint: 2
 
-  - id: mains_switch1
-    name: Mains switch
+  - id: socket1
+    name: "Mains socket #1"
     nodeid: socket1
     endpoint: 1
 
 dimmers:
-  - id: stair_light
-    name:  Stair light
-    nodeid: stair_light
+  - id: overstair_light
+    name:  Over stair light
+    nodeid: overstair_light
     endpoint: 1
