@@ -34,10 +34,10 @@ def get_config(node_id, param):
     if node:
         value = node.get_configuration(param)
 
-        if value:
-            resp = jsonify(value)
-        else:
+        if value is None:
             resp = "Unknown parameter", 404
+        else:
+            resp = jsonify(value)
     else:
         resp = "Unknown node", 404
 
