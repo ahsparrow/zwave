@@ -181,7 +181,7 @@ def set_dimmer(dimmer_id):
         value = request.get_json()
         try:
             value = int(value)
-            if value < 0 or value > 99:
+            if value < 0 or (value > 99 and value != 255):
                 raise ValueError
             dimmer.set(value)
             resp = ""
