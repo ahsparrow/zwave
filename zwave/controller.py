@@ -9,7 +9,7 @@ import serial
 from . import zwave
 
 ACK_TIMEOUT = 0.1
-SEND_TIMEOUT = 2.0
+SEND_TIMEOUT = 5.0
 
 RETRY_TIME = 0.05
 MAX_RETRIES = 10
