@@ -4,6 +4,8 @@ import logging
 
 from . import command
 
+TIMEOUT = 2.0
+
 class Endpoint:
     def __init__(self, node, endpoint=1, name=""):
         self.node = node
@@ -33,7 +35,7 @@ class BinarySwitch(Endpoint):
         self.send_command(command.BinarySwitchGet())
 
         try:
-            result = self.async_value.get(timeout=1.0)
+            result = self.async_value.get(timeout=TIMEOUT)
         except Timeout:
             logging.error("BasicSwitch get timeout: %s" % self.name)
             result = None
@@ -45,6 +47,7 @@ class BinarySwitch(Endpoint):
 
     def response(self, cmd):
         if isinstance(cmd, command.BinarySwitchReport):
+            print("response")
             self.async_value.set(cmd.value)
         else:
             super().response(cmd)
@@ -55,7 +58,7 @@ class MultilevelSwitch(Endpoint):
         self.send_command(command.MultilevelSwitchGet())
 
         try:
-            result = self.async_value.get(timeout=1.0)
+            result = self.async_value.get(timeout=TIMEOUT)
         except Timeout:
             logging.error("MultilevelSwitch get timeout: %s" % self.name)
             result = None
