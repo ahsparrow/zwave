@@ -1,23 +1,26 @@
 import logging
 
 import gevent
-from gevent.queue import PriorityQueue
+from gevent.queue import Queue
 from gevent.event import AsyncResult
 
 import serial
 
 from . import zwave
 
-ACK_TIMEOUT = 0.1
-SEND_TIMEOUT = 5.0
+# Time to wait for Z-Wave stick to acknowledge
+ACK_TIMEOUT = 0.5
 
-RETRY_TIME = 0.05
-MAX_RETRIES = 10
+# Time to wait for Z-Wave remote node to acknowlege
+TX_TIMEOUT = 2.0
+
+# Max number of retries following CAN or NAK
+MAX_TX_RETRIES = 3
 
 MIN_TXMSG_ID = 0x20
 MAX_TXMSG_ID = 0xff
 
-ACK_PRIO = 0
+ACK_STR = {zwave.ACK: "ACK", zwave.NAK: "NAK", zwave.CAN: "CAN"}
 
 class TransmitError(Exception):
     def __init__(self, value):
@@ -32,11 +35,13 @@ class Timeout(Exception):
 
 class Controller:
     def __init__(self):
-        self.msg_q = PriorityQueue()
+        self.msg_q = Queue()
         self.nodes = {}
-        self.msg_count = 1
+
+        self.ack_result = None
+
         self.txmsg_id = MIN_TXMSG_ID
-        self.sent_msgs = {}
+        self.tx_result = {}
 
     # Register a node (to get received messages)
     def register_node(self, node):
@@ -52,31 +57,10 @@ class Controller:
         gevent.spawn(self.transmit)
         gevent.spawn(self.receive)
 
-    # Send Z-Wave data and wait for acknowledgment from remote node
-    def send_data(self, data, timeout=SEND_TIMEOUT):
-        msg = [zwave.REQUEST, zwave.API_ZW_SEND_DATA] + data + \
-              [zwave.TRANSMIT_OPTION_ACK | zwave.TRANSMIT_OPTION_AUTO_ROUTE,
-               self.txmsg_id]
-
-        self.msg_q.put((self.msg_count, msg))
-        self.msg_count += 1
-
-        result = AsyncResult()
-        self.sent_msgs[self.txmsg_id] = {'data': data, 'result': result}
-
-        # Increment and wrap message ID
-        self.txmsg_id += 1
-        if self.txmsg_id > MAX_TXMSG_ID:
-            self.txmsg_id = MIN_TXMSG_ID
-
-        try:
-            value = result.get(timeout=timeout)
-        except gevent.Timeout:
-            logging.error("Timeout wait for t/x acknowledgement")
-            raise Timeout
-
-        if value != zwave.TRANSMIT_COMPLETE_OK:
-            raise TransmitError(value)
+    # Queue Z-Wave data for transmission to remote node
+    def send_data(self, data):
+        msg = [zwave.REQUEST, zwave.API_ZW_SEND_DATA] + data
+        self.msg_q.put(msg)
 
     def get_version(self):
         msg = [zwave.REQUEST, zwave.API_ZW_GET_VERSION]
@@ -91,39 +75,66 @@ class Controller:
 
     def transmit(self):
         while 1:
-            prio, msg = self.msg_q.get()
+            msg = self.msg_q.get()
 
-            # ACK is special case
-            if prio == ACK_PRIO:
-                self.ser.write(msg)
-                continue
+            # Increment and wrap message ID
+            self.txmsg_id += 1
+            if self.txmsg_id > MAX_TXMSG_ID:
+                self.txmsg_id = MIN_TXMSG_ID
 
-            logging.debug("Tx: " + zwave.msg_str(msg))
-            try:
-                for i in range(MAX_RETRIES):
-                    res = self.transmit_msg(msg)
-                    if res == zwave.CAN:
-                        logging.debug("T/X cancelled, retrying...")
-                        gevent.sleep(RETRY_TIME)
-                    elif res == zwave.NAK:
-                        logging.error("T/x NAK: " + zwave.msg_str(msg))
-                        break
-                    elif res == zwave.ACK:
+            # tx_result is set by acknowledgement from remote node
+            tx_result = AsyncResult()
+            self.tx_result[self.txmsg_id] = tx_result
+
+            # Send message and wait for ACK/NAK/CAN from Z-Wave interface
+            ack = self.transmit_msg(msg, self.txmsg_id)
+
+            if ack in [zwave.CAN, zwave.NAK]:
+                # Re-try send message
+                for n in range(MAX_TX_RETRIES):
+                    gevent.sleep(0.1 + n)
+                    logging.debug("Tx retry #%d..." % (n + 1))
+
+                    ack = self.transmit_msg(msg, self.txmsg_id)
+                    if ack == zwave.ACK:
                         break
                 else:
-                    logging.error("T/x max. retries: " + zwave.msg_str(msg))
+                    # Too many retries, give up on this message
+                    logging.error("Maximum Tx retries exceeded")
 
-            except gevent.Timeout:
-                logging.error("T/x timeout: " + zwave.msg_str(msg))
+            if ack == zwave.ACK:
+                try:
+                    # Wait for acknowledgement from remote node
+                    tx_result.get(timeout=TX_TIMEOUT)
+                except gevent.Timeout:
+                    logging.error("Tx timeout, no remote ACK")
+            else:
+                logging.error("Tx ACK not received")
 
-    def transmit_msg(self, msg):
-        payload = [len(msg) + 1] + msg
+    # Send message and wait for ACK/NAK/CAN from Z-Wave controller
+    def transmit_msg(self, msg, msg_id):
+        payload = [len(msg) + 3] + msg + [zwave.TRANSMIT_OPTION_ACK, msg_id]
         buf = bytes([zwave.SOF] + payload + [zwave.checksum(payload)])
+        logging.debug("Tx: " + zwave.msg_str(buf[1:]))
 
-        self.tx_result = AsyncResult()
+        self.ack_result = AsyncResult()
         self.ser.write(buf)
+        try:
+            result = self.ack_result.get(timeout=ACK_TIMEOUT)
+        except gevent.Timeout:
+            logging.warning("Tx ACK timeout")
+            result = None
 
-        return self.tx_result.get(timeout=ACK_TIMEOUT)
+        self.ack_result = None
+        return result
+
+    def send_ack(self):
+        logging.debug("Tx: ACK")
+        self.ser.write([zwave.ACK])
+
+    def send_can(self):
+        logging.debug("Tx: CAN")
+        self.ser.write([zwave.CAN])
 
     def receive(self):
         while 1:
@@ -131,20 +142,33 @@ class Controller:
             if not b:
                 continue
 
-            if b[0] == zwave.SOF:
+            frame_type = b[0]
+            if frame_type == zwave.SOF:
+                # Data frame
                 self.read_msg()
-            elif b[0] in [zwave.ACK, zwave.NAK, zwave.CAN]:
-                self.tx_result.set(b[0])
+
+            elif frame_type in [zwave.ACK, zwave.NAK, zwave.CAN]:
+                # ACK/NAK/CAN frame
+                logging.debug("Rx: %s" % ACK_STR[frame_type])
+
+                if self.ack_result is not None:
+                    # Return result to t/x thread
+                    self.ack_result.set(frame_type)
+                else:
+                    # Unexpected ACK/NAK/CAN
+                    logging.warning("Rx unexpected %s" % ACK_STR[frame_type])
+
             else:
+                # Unknown frame
                 logging.warning(
-                        "Unexpected start character {0x:02x}".format(b[0]))
+                        "Rx unexpected start character {0x:02x}".format(frame_type))
 
     def read_msg(self):
-        # Read message length
+        # Get message length
         b = self.ser.read()
 
         if not b:
-            logging.warning("R/x timeout waiting for length")
+            logging.error("Rx timeout waiting for length")
         else:
             # Read remainder of message
             msg_len = b[0]
@@ -153,14 +177,17 @@ class Controller:
             if len(msg) != msg_len:
                 # Message length mismatch
                 logging.warning(
-                    "R/x message length mismatach {}/{}".format(len(msg), msg_len))
+                    "Rx message length mismatach {}/{}".format(len(msg), msg_len))
             else:
                 logging.debug("Rx: " + zwave.msg_str(msg))
 
-                # Queue message acknowledgement for send
-                self.msg_q.put((ACK_PRIO, [zwave.ACK]))
-
-                self.process_msg(msg)
+                # Message acknowledgement
+                if self.ack_result is None:
+                    self.send_ack()
+                    self.process_msg(msg)
+                else:
+                    # Tx in progress, cancel receive
+                    self.send_can()
 
     def process_msg(self, msg):
         if msg[0] == zwave.RESPONSE:
@@ -171,26 +198,16 @@ class Controller:
                 if node in self.nodes:
                     self.nodes[node].response(msg[5:-1])
 
-            # Result of send data
+            # Tx acknowledgement from remote node
             elif msg[1] == zwave.API_ZW_SEND_DATA:
-                id = msg[2]
-                sent_msg = self.sent_msgs.pop(id, None)
+                msg_id = msg[2]
+                tx_result = self.tx_result.pop(msg_id, None)
 
-                if sent_msg:
+                if tx_result:
                     result = msg[3]
                     if result != zwave.TRANSMIT_COMPLETE_OK:
-                        logging.warning("Transmit fail: %d, %s",
-                                        result,
-                                        zwave.msg_str(sent_msg['data']))
+                        logging.warning("Tx failed, id: %x", msg_id)
 
-                    sent_msg['result'].set(result)
-
-        elif msg[0] == zwave.REQUEST:
-            if msg[1] == zwave.API_GET_INIT_DATA:
-                num_bitfields = msg[4]
-
-                nodes = []
-                for n_byte, bitfield in enumerate(msg[5:5 + num_bitfields]):
-                    for n_bit in range(8):
-                        if bitfield & (1 << n_bit):
-                            nodes.append(n_byte * 8 + n_bit + 1)
+                    tx_result.set(result)
+                else:
+                    logging.error("Unexpected tx acknowledgment")
