@@ -264,6 +264,8 @@ if __name__ == "__main__":
                                       datefmt="%y/%m/%d %H:%M:%S")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+    else:
+        logging.basicConfig(format="%(asctime)s,%(msecs)d:%(levelname)s:%(message)s", datefmt="%H:%M:%S")
 
     controller = zwave.Controller()
 
