@@ -6,7 +6,7 @@ After=network.target
 User=zwave
 Group=zwave
 RuntimeDirectory=zwave
-WorkingDirectory=/srv/www/zwave/zwave
+WorkingDirectory=/srv/www/zwave
 ExecStart=/srv/www/zwave/venv/bin/python resty.py -s /dev/ttyACM0 --logdir /var/log/zwave config.yaml
 
 [Install]
