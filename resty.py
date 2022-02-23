@@ -164,14 +164,14 @@ def set_switch(switch_id):
 # Network
 
 def build_zwave(config_file, controller):
-    network = yaml.load(config_file)
+    network = yaml.safe_load(config_file)
 
     nodes = {}
     for n in network['nodes']:
         name = n.get('name', "")
         config_file = n.get('config')
         if config_file:
-            config = yaml.load(open(config_file))
+            config = yaml.safe_load(open(config_file))
         else:
             config = {}
 
