@@ -5,6 +5,7 @@ import sys
 
 def set(url, value):
     put_req = requests.put(url, json=args.value)
+    time.sleep(1)
     get_req = requests.get(url)
 
     return get_req.json() == value
